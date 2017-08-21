@@ -1,0 +1,14 @@
+/autom4te.cache
+.deps/
+/build
+aclocal.m4
+configure
+autoscan.log
+config.h
+config.log
+config.status
+Makefile
+Makefile.in
+stamp-h1
+*.o
+src/demo1

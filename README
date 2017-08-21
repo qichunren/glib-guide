@@ -1,0 +1,13 @@
+# Glib guide
+
+
+## Build steps
+
+	./clean.sh
+	autoconf
+	automake
+	mkdir -p build && cd build
+	./configure
+	make
+	./src/demo1
+
