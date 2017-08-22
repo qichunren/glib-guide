@@ -11,4 +11,8 @@ rm -rf Makefile.in
 rm -rf src/Makefile
 rm -rf src/Makefile.in
 
+rm -rf config.guess
+rm -rf config.sub
+rm -rf config.h.in~
+
 find -name "*.o" -exec rm {} \;
