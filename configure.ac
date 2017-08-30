@@ -38,6 +38,7 @@ AM_PROG_LIBTOOL
 CFLAGS="-Wall"
 
 PKG_CHECK_MODULES([GLIB2], [glib-2.0 >= 2.32, gthread-2.0 >= 2.32, gmodule-2.0 >= 2.32, gio-2.0 >= 2.32])
+PKG_CHECK_MODULES([GSTREAMER], [gstreamer-1.0 >= 1.2.0, gstreamer-base-1.0 >= 1.2.0, gstreamer-audio-1.0 >= 1.2.0 gstreamer-plugins-base-1.0 >= 1.2.0 gstreamer-rtp-1.0 >= 1.2.0])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
