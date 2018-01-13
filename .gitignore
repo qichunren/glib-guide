@@ -7,6 +7,8 @@ autoscan.log
 config.h
 config.log
 config.status
+config.guess
+config.sub
 Makefile
 Makefile.in
 stamp-h1
