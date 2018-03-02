@@ -45,5 +45,6 @@ AC_CONFIG_FILES([
  Makefile
  src/Makefile
  gobject-examples/Makefile
+ tcp-examples/Makefile
 ])
 AC_OUTPUT
