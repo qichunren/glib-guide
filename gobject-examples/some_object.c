@@ -1,5 +1,7 @@
 #include "some_object.h"
 
+#include <stdio.h>
+
 typedef struct
 {
 	int number;	

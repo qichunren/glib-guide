@@ -7,14 +7,14 @@ G_BEGIN_DECLS
 
 #define TCP_TYPE_SERVER (tcp_server_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (TcpServer, tcp_server, TCP, SERVER, GObject)
+G_DECLARE_DERIVABLE_TYPE(TcpServer, tcp_server, TCP, SERVER, GObject)
 
 struct _TcpServerClass
 {
 	GObjectClass parent;
 };
 
-TcpServer * tcp_server_new (void);
+TcpServer * tcp_server_new(void);
 gboolean  tcp_server_run(TcpServer *);
 
 G_END_DECLS

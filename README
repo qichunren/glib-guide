@@ -4,8 +4,7 @@
 ## Build steps
 
 	./clean.sh
-	autoconf
-	automake
+	./autogen.sh
 	mkdir -p build && cd build
 	../configure
 	make
