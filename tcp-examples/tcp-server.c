@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <glib/gprintf.h>
+
 typedef struct _ConnectionData
 {
     GSocketConnection * connection;
@@ -22,7 +24,7 @@ typedef struct _ConnectionData
 
 typedef struct
 {
-  int number;
+  uint server_port;
   GSocketService * socket_service;
   GHashTable * connection_table;
     
@@ -31,8 +33,9 @@ typedef struct
 G_DEFINE_TYPE_WITH_PRIVATE(TcpServer, tcp_server, G_TYPE_OBJECT)
 
 enum {
-  PROP_0,
-  LAST_PROP
+    PROP_NONE,
+    PROP_PORT,
+    LAST_PROP
 };
 
 static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition condition, gpointer user_data);
@@ -41,13 +44,19 @@ static GParamSpec * gParamSpecs[LAST_PROP];
 
 TcpServer * tcp_server_new(void)
 {
-    return g_object_new(TCP_TYPE_SERVER, NULL);
+    return g_object_new(TCP_TYPE_SERVER, "port", 5555, NULL);
 }
 
 static void tcp_server_finalize(GObject * object)
 {
-    TcpServer *self = (TcpServer *)object;
-    TcpServerPrivate *priv = tcp_server_get_instance_private(self);
+    TcpServer * self = (TcpServer *)object;
+    TcpServerPrivate * priv = tcp_server_get_instance_private(self);
+
+    g_object_unref(priv->socket_service);
+    priv->socket_service = NULL;
+
+    g_hash_table_unref(priv->connection_table);
+    priv->connection_table = NULL;
 	
     G_OBJECT_CLASS (tcp_server_parent_class)->finalize(object);
 }
@@ -55,20 +64,30 @@ static void tcp_server_finalize(GObject * object)
 static void tcp_server_get_property(GObject * object, guint prop_id, GValue * value, GParamSpec * pspec)
 {
     TcpServer * self = TCP_SERVER(object);
+    TcpServerPrivate * priv = tcp_server_get_instance_private(self);
 
     switch(prop_id)
     {
+        case PROP_PORT:
+              g_value_set_uint(value, priv->server_port);
+              g_print ("server port: %u\n", priv->server_port);
+              break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     }
 }
 
-static void tcp_server_set_property(GObject * object, guint prop_id, const GValue * value, GParamSpec * pspec)
+static void tcp_server_set_property(GObject * object, guint prop_id, GValue * value, GParamSpec * pspec)
 {
     TcpServer * self = TCP_SERVER(object);
+    TcpServerPrivate * priv = tcp_server_get_instance_private(self);
 
     switch(prop_id)
     {
+        case PROP_PORT:
+            priv->server_port = g_value_get_uint(value);
+            g_print ("set server port: %u\n", priv->server_port);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -81,11 +100,19 @@ static void tcp_server_class_init(TcpServerClass * klass)
     object_class->finalize = tcp_server_finalize;
     object_class->get_property = tcp_server_get_property;
     object_class->set_property = tcp_server_set_property;
+
+    gParamSpecs[PROP_PORT] = g_param_spec_uint("port", "Socket port", "Tcp server port.",
+                                                  1000  /* minimum value */,
+                                                  65535 /* maximum value */,
+                                                  3456  /* default value */,
+                                                  G_PARAM_READWRITE);
+
+    g_object_class_install_properties(object_class, LAST_PROP, gParamSpecs);
 }
 
 static void connection_data_destroy(ConnectionData * data)
 {
-    if(data==NULL)
+    if(data == NULL)
     {
         return;
     }
@@ -269,7 +296,6 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
 static void tcp_server_init(TcpServer * self)
 {
     TcpServerPrivate * priv = tcp_server_get_instance_private(self);
-    priv->number = 10;
     priv->connection_table = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)connection_data_destroy);
     if(priv->connection_table == NULL)
     {
@@ -290,7 +316,7 @@ static void lps_ctrl_string_free(GString * str)
 
 static ConnectionData * connection_data_new(GSocketConnection * connection)
 {
-    ConnectionData *data = g_new0(ConnectionData, 1);
+    ConnectionData * data = g_new0(ConnectionData, 1);
     data->read_buffer = g_string_new("");
     data->write_queue = g_async_queue_new_full((GDestroyNotify)lps_ctrl_string_free);
     data->connection = g_object_ref(connection);
@@ -299,7 +325,7 @@ static ConnectionData * connection_data_new(GSocketConnection * connection)
 
 static gboolean client_connected_cb(GSocketService * service, GSocketConnection * connection, GObject * source_object, gpointer user_data)
 {
-    ConnectionData *connection_data;
+    ConnectionData * connection_data;
     TcpServer * ctrl_data = (TcpServer *)user_data;
     TcpServerPrivate * priv = tcp_server_get_instance_private (ctrl_data);
     GSocketAddress * remote_address;
@@ -360,7 +386,7 @@ gboolean tcp_server_run(TcpServer * self)
 {
     GError * error = NULL;
     TcpServerPrivate * priv = tcp_server_get_instance_private (self);
-    if(!g_socket_listener_add_inet_port(G_SOCKET_LISTENER(priv->socket_service), 3456, NULL, &error))
+    if(!g_socket_listener_add_inet_port(G_SOCKET_LISTENER(priv->socket_service), priv->server_port, NULL, &error))
     {
         g_warning("Failed to bind control socket service: %s", error->message);
         g_clear_error(&error);
@@ -369,4 +395,5 @@ gboolean tcp_server_run(TcpServer * self)
     }
     g_signal_connect(priv->socket_service, "incoming", G_CALLBACK(client_connected_cb), self);
     g_socket_service_start(priv->socket_service);
+    g_printf("Server listen on port: %u\n", priv->server_port);
 }
