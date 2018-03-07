@@ -17,7 +17,6 @@ typedef struct _ConnectionData
     GIOChannel * channel;
     int fd;
     GString * read_buffer;
-    GString * write_remaining;
     GAsyncQueue * write_queue;
     guint io_watch_id;
 } ConnectionData;
@@ -39,6 +38,9 @@ enum {
 };
 
 static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition condition, gpointer user_data);
+
+static GString * command_test();
+static gboolean write_data_add(TcpServer * self, ConnectionData * connection_data, GString * data);
 
 static GParamSpec * gParamSpecs[LAST_PROP];
 
@@ -120,10 +122,6 @@ static void connection_data_destroy(ConnectionData * data)
     {
         g_string_free(data->read_buffer, TRUE);
     }
-    if(data->write_remaining != NULL)
-    {
-        g_string_free(data->write_remaining, TRUE);
-    }
     if(data->write_queue != NULL)
     {
         g_async_queue_unref(data->write_queue);
@@ -144,19 +142,17 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
     TcpServerPrivate * priv = tcp_server_get_instance_private(ctrl_data);
     ConnectionData * connection_data;
     gchar buffer[16385];
-    ssize_t recv_num, total_send = 0, send_num, send_remaining;
+    ssize_t recv_num = 0, send_num, send_remaining;
     struct sockaddr_in cliaddr;
     socklen_t addr_len;
     gboolean ret = TRUE;
     GString * write_data;
-    gboolean writable = TRUE;
-    gboolean wouldblock = FALSE;
     gsize segsize;
 
     addr_len = sizeof(struct sockaddr_in);
     connection_data = g_hash_table_lookup(priv->connection_table, source);
       
-    printf("invoke lps_ctrl_tcp_io_watch_cb\n");
+    printf("\n\ninvoke lps_ctrl_tcp_io_watch_cb %d\n", condition);
       
     if(connection_data == NULL)
     {
@@ -179,7 +175,9 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
         while(connection_data->read_buffer->len > 0 && (segsize = strlen(connection_data->read_buffer->str)) != connection_data->read_buffer->len)
         {
             // ret = !lps_ctrl_data_parse(ctrl_data, connection_data, connection_data->read_buffer, segsize);
-            printf("connection_data->read_buffer->str: %s\n", connection_data->read_buffer->str);
+            printf("connection_data->read_buffer->str: %s, segsize %u, len %u\n", connection_data->read_buffer->str, segsize, connection_data->read_buffer->len);
+            GString * test_cmd_data = command_test();
+            write_data_add(ctrl_data, connection_data, test_cmd_data);
             g_string_erase(connection_data->read_buffer, 0, segsize + 1);
         }
       }
@@ -201,51 +199,18 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
   }
   else if(condition & G_IO_OUT)
   {
-        writable = TRUE;
-        wouldblock = FALSE;
-        if(connection_data->write_remaining != NULL)
-        {
-            write_data = connection_data->write_remaining;
-            while(total_send < write_data->len+1)
-            {
-                send_remaining = write_data->len + 1 - total_send;
-                send_num = send(connection_data->fd, write_data->str+total_send, send_remaining > 16384 ? 16384 : send_remaining, 0);
-                if(send_num > 0)
-                {
-                    total_send += send_num;
-                }
-                else
-                {
-                    if(errno == EWOULDBLOCK)
-                    {
-                        g_string_erase(write_data, 0, total_send);
-                        wouldblock = TRUE;
-                    }
-                    writable = FALSE;
-                    break;
-                }
-            }
-            if(!wouldblock)
-            {
-                connection_data->write_remaining = NULL;
-                g_string_free(write_data, TRUE);
-            }
-        }
-        if(writable)
+        while(g_async_queue_length(connection_data->write_queue) > 0)
         {
             write_data = g_async_queue_try_pop(connection_data->write_queue);
-        }
-        else
-        {
-            write_data = NULL;
-        }
-        if(write_data!=NULL)
-        {
-            wouldblock = FALSE;
-            while(total_send < write_data->len+1)
+            if(write_data == NULL)
+                continue;
+
+            ssize_t total_send = 0;
+
+            while(total_send < write_data->len + 1)
             {
                 send_remaining = write_data->len + 1 - total_send;
-                send_num = send(connection_data->fd, write_data->str+total_send, send_remaining > 16384 ? 16384 : send_remaining, 0);
+                send_num = send(connection_data->fd, write_data->str + total_send, send_remaining>16384 ? 16384 : send_remaining, 0);
                 if(send_num > 0)
                 {
                     total_send += send_num;
@@ -255,33 +220,17 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
                     if(errno == EWOULDBLOCK)
                     {
                         g_string_erase(write_data, 0, total_send);
-                        connection_data->write_remaining = write_data;
-                        wouldblock = TRUE;
                     }
                     break;
                 }
             }
-            if(!wouldblock)
-            {
-                g_string_free(write_data, TRUE);
-            }
-            if(g_async_queue_length(connection_data->write_queue) > 0)
-            {
-                wouldblock = TRUE;
-            }
-            if(!wouldblock)
-            {
-                if(connection_data->io_watch_id>0)
-                {
-                    g_source_remove(connection_data->io_watch_id);
-                }
-                connection_data->io_watch_id = g_io_add_watch(
-                    connection_data->channel, G_IO_IN | G_IO_ERR | G_IO_HUP |
-                    G_IO_NVAL, tcp_server_socket_io_watch_cb, user_data);
-            }
         }
-        ret = wouldblock;
-        return ret;
+
+        if(connection_data->io_watch_id>0)
+        {
+            g_source_remove(connection_data->io_watch_id);
+        }
+        connection_data->io_watch_id = g_io_add_watch(connection_data->channel, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL, tcp_server_socket_io_watch_cb, user_data);
     }
     else if(condition & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
     {
@@ -385,7 +334,7 @@ static gboolean client_connected_cb(GSocketService * service, GSocketConnection 
 gboolean tcp_server_run(TcpServer * self)
 {
     GError * error = NULL;
-    TcpServerPrivate * priv = tcp_server_get_instance_private (self);
+    TcpServerPrivate * priv = tcp_server_get_instance_private(self);
     if(!g_socket_listener_add_inet_port(G_SOCKET_LISTENER(priv->socket_service), priv->server_port, NULL, &error))
     {
         g_warning("Failed to bind control socket service: %s", error->message);
@@ -396,4 +345,47 @@ gboolean tcp_server_run(TcpServer * self)
     g_signal_connect(priv->socket_service, "incoming", G_CALLBACK(client_connected_cb), self);
     g_socket_service_start(priv->socket_service);
     g_printf("Server listen on port: %u\n", priv->server_port);
+
+    return TRUE;
+}
+
+gboolean tcp_server_send(TcpServer * self, GString * data)
+{
+    TcpServerPrivate * priv = tcp_server_get_instance_private(self);
+    
+    return TRUE;
+}
+
+static GString * command_test()
+{
+    GString *write_data;
+    write_data = g_string_new("test_cmd");
+    return write_data;
+}
+
+static gboolean write_data_add(TcpServer * self, ConnectionData * connection_data, GString * data)
+{
+    GHashTableIter iter;
+    GString *str;
+    
+    if(self == NULL || connection_data == NULL)
+    {
+        return FALSE;
+    }
+    if(connection_data != NULL)
+    {
+        if(g_async_queue_length(connection_data->write_queue) > 4096)
+        {
+            g_warning("Socket write queue overflow!");
+            g_string_free(data, TRUE);
+            return FALSE;
+        }
+        g_async_queue_push(connection_data->write_queue, data);
+        if(connection_data->io_watch_id>0)
+        {
+            g_source_remove(connection_data->io_watch_id);
+        }
+        connection_data->io_watch_id = g_io_add_watch(connection_data->channel, G_IO_OUT, tcp_server_socket_io_watch_cb, self);
+    }
+    return TRUE;
 }

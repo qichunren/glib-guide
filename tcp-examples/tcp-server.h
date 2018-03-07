@@ -15,7 +15,8 @@ struct _TcpServerClass
 };
 
 TcpServer * tcp_server_new(void);
-gboolean  tcp_server_run(TcpServer *);
+gboolean tcp_server_run(TcpServer *);
+gboolean tcp_server_send(TcpServer *, GString * data);
 
 G_END_DECLS
 
