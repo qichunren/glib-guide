@@ -1,0 +1,12 @@
+---
+ColumnLimit: 0
+SpaceBeforeAssignmentOperators: true
+BreakBeforeBraces: GNU
+BreakBeforeBraces: Allman
+SpaceBeforeParens: Never
+AlignAfterOpenBracket: DontAlign
+AllowShortFunctionsOnASingleLine: None
+TabWidth: 4
+IndentWidth: 4
+UseTab: Never
+
