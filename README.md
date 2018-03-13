@@ -10,3 +10,7 @@
 	make
 	./src/demo1
 
+## Debug
+
+Run `export G_MESSAGES_DEBUG=all` to make `g_debug` function output message.
+
