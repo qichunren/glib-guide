@@ -3,12 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <netinet/in.h>
 
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
 
-static GMainLoop *g_main_loop = NULL;
-static SoupServer *server;
+#include "app-server.h"
+#include "app-client.h"
+
+static GMainLoop * g_main_loop = NULL;
+static AppServer * g_app_server = NULL;
 
 static int compare_strings(gconstpointer a, gconstpointer b)
 {
@@ -217,19 +221,28 @@ static void ws_receive_message(SoupWebsocketConnection *ws, SoupWebsocketDataTyp
     gsize si;
     const void * data = g_bytes_get_data(message, &si);
     g_message("%s", data);
+
+    gpointer value;
+    SoupWebsocketConnection * key;
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, g_app_server->clients);
+    while(g_hash_table_iter_next(&iter, (gpointer *)&key, &value))
+    {
+        soup_websocket_connection_send_text(key, data);
+    }
 }
 
-
-void server_websocket_callback(SoupServer *server, SoupWebsocketConnection *connection, const char *path, SoupClientContext *client, gpointer user_data)
+void server_websocket_callback(SoupServer * server, SoupWebsocketConnection *connection, const char * path, SoupClientContext * client, gpointer user_data)
 {
     g_debug("server_websocket_callback");
     soup_websocket_connection_send_text(connection, "Welcome.");
 
     g_signal_connect(connection, "message", G_CALLBACK(ws_receive_message), connection);
-    g_object_ref(connection);
+
+    AppClient * app_client = app_client_new(connection);
+
+    g_hash_table_replace(g_app_server->clients, connection, app_client);
 }
-
-
 
 gint main(gint argc, gchar *argv[])
 {
@@ -247,15 +260,15 @@ gint main(gint argc, gchar *argv[])
     g_print(" Application");
     g_print("\n");
 
-    server = soup_server_new(SOUP_SERVER_SERVER_HEADER, "simple-httpd ", NULL);
+    g_app_server = app_server_new();
 
-    soup_server_add_handler(server, "/http-server/websocket.html", server_callback, NULL, NULL);
-    soup_server_add_websocket_handler(server, NULL, NULL, NULL, server_websocket_callback, NULL, NULL);
+    soup_server_add_handler(g_app_server->server, "/http-server/websocket.html", server_callback, NULL, NULL);
+    soup_server_add_websocket_handler(g_app_server->server, NULL, NULL, NULL, server_websocket_callback, NULL, NULL);
 
-    soup_server_listen_all(server, 8000, 0, &error);
+    soup_server_listen_all(g_app_server->server, 8000, 0, &error);
 
 
-    uris = soup_server_get_uris(server);
+    uris = soup_server_get_uris(g_app_server->server);
     for(u = uris; u; u = u->next)
     {
         str = soup_uri_to_string(u->data, FALSE);
