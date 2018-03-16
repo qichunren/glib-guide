@@ -7,14 +7,9 @@ G_BEGIN_DECLS
 
 #define SOME_TYPE_OBJECT (some_object_get_type())
 
-G_DECLARE_DERIVABLE_TYPE (SomeObject, some_object, SOME, OBJECT, GObject)
+G_DECLARE_DERIVABLE_TYPE(SomeObject, some_object, SOME, OBJECT, GObject)
 
-struct _SomeObjectClass
-{
-	GObjectClass parent;
-};
-
-SomeObject *some_object_new (void);
+SomeObject *some_object_new(void);
 
 G_END_DECLS
 

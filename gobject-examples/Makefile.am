@@ -1,10 +1,10 @@
-bin_PROGRAMS=some-object
+bin_PROGRAMS=gobject-example
 
-noinst_HEADERS=some_object.h
+noinst_HEADERS=some_object.h example-person.h example-worker.h example-boss.h
 
-some_object_CFLAGS=@GLIB2_CFLAGS@ -DPREFIXDIR=\"$(prefix)\"
-some_object_DEPENDENCIES=@LIBOBJS@
-some_object_SOURCES=main.c some_object.c
-some_object_LDFLAGS=-export-dynamic -no-undefined \
+gobject_example_CFLAGS=@GLIB2_CFLAGS@ -DPREFIXDIR=\"$(prefix)\"
+gobject_example_DEPENDENCIES=@LIBOBJS@
+gobject_example_SOURCES=main.c some_object.c example-person.c example-worker.c example-boss.c
+gobject_example_LDFLAGS=-export-dynamic -no-undefined \
     -export-symbols-regex "^[[^_]].*"
-some_object_LDADD=@LIBOBJS@ @GLIB2_LIBS@
+gobject_example_LDADD=@LIBOBJS@ @GLIB2_LIBS@
