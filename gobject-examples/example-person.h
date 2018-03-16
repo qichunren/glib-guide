@@ -5,6 +5,11 @@
 
 G_BEGIN_DECLS
 
+struct _ExamplePersonClass
+{
+    GObjectClass parent;
+};
+
 #define EXAMPLE_TYPE_PERSON (example_person_get_type())
 
 G_DECLARE_DERIVABLE_TYPE(ExamplePerson, example_person, EXAMPLE, PERSON, GObject)

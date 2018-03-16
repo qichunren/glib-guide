@@ -1,17 +1,11 @@
 #include "example-person.h"
 
-
 typedef enum
 {
     FEMALE,
     MALE,
     SEX_LAST
 } SexFlag;
-
-struct _ExamplePersonClass
-{
-    GObjectClass parent;
-};
 
 typedef struct
 {
@@ -33,7 +27,6 @@ enum
 static GParamSpec * properties[N_PROPERTIES] = { NULL, };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ExamplePerson, example_person, G_TYPE_OBJECT)
-
 
 static void example_person_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec * pspec)
 {
@@ -64,6 +57,10 @@ static void example_person_set_property(GObject *object, guint prop_id, const GV
     switch(prop_id)
     {
         case PROP_NAME:
+            if(priv->name != NULL)
+            {
+                g_free(priv->name);
+            }
             priv->name = g_strdup(g_value_get_string(value));
             break;
         case PROP_AGE:
@@ -106,6 +103,12 @@ static void example_person_class_init(ExamplePersonClass *klass)
 
 static void example_person_init(ExamplePerson *self)
 {
+    g_message("example_person init");
+    ExamplePersonPrivate * priv = example_person_get_instance_private(self);
+    if(priv->name != NULL)
+    {
+        g_warning("example person instance name property is not null when init");
+    }
 
 }
 
