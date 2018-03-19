@@ -14,3 +14,8 @@ Makefile.in
 stamp-h1
 *.o
 src/demo1
+src/demo2
+http-server/http-server
+tcp-examples/tcp-server
+gobject-examples/gobject-example
+*.user

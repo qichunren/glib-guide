@@ -1,0 +1,8 @@
+build
+gobject-examples
+http-server
+tcp-examples
+/usr/include/glib-2.0/
+/usr/include/libsoup-2.4/
+/usr/include/gstreamer-1.0/
+.
