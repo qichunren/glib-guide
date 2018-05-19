@@ -25,3 +25,4 @@ Run `export G_MESSAGES_DEBUG=all` to make `g_debug` function output message.
 * [Boilerplate code](https://developer.gnome.org/gobject/stable/howto-gobject-code.html)
 * [如何定义和实现新的GObject之代码实现](https://blog.csdn.net/lp525110627/article/details/71731595)
 * [如何定义和实现新的GObject之对象构造和析构](https://blog.csdn.net/lp525110627/article/details/71743173)
+* [Manage C data using the GLib collections](https://www.ibm.com/developerworks/linux/tutorials/l-glib/)
