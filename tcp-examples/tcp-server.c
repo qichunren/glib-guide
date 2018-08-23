@@ -11,6 +11,8 @@
 
 #include <glib/gprintf.h>
 
+#include<pthread.h>
+
 typedef struct _ConnectionData
 {
     GSocketConnection * connection;
@@ -40,6 +42,7 @@ enum {
 static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition condition, gpointer user_data);
 
 static GString * command_test();
+static gboolean send_file_to_client(gchar * file_path);
 static gboolean write_data_add(TcpServer * self, ConnectionData * connection_data, GString * data);
 
 static GParamSpec * gParamSpecs[LAST_PROP];
@@ -137,7 +140,8 @@ static void connection_data_destroy(ConnectionData * data)
     g_free(data);
 }
 
-static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition condition, gpointer user_data) {
+static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition condition, gpointer user_data)
+{
     TcpServer * ctrl_data = (TcpServer *)user_data;
     TcpServerPrivate * priv = tcp_server_get_instance_private(ctrl_data);
     ConnectionData * connection_data;
@@ -210,7 +214,7 @@ static gboolean tcp_server_socket_io_watch_cb(GIOChannel * source, GIOCondition 
             while(total_send < write_data->len + 1)
             {
                 send_remaining = write_data->len + 1 - total_send;
-                send_num = send(connection_data->fd, write_data->str + total_send, send_remaining>16384 ? 16384 : send_remaining, 0);
+                send_num = send(connection_data->fd, write_data->str + total_send, send_remaining > 16384 ? 16384 : send_remaining, 0);
                 if(send_num > 0)
                 {
                     total_send += send_num;
@@ -276,7 +280,7 @@ static gboolean client_connected_cb(GSocketService * service, GSocketConnection 
 {
     ConnectionData * connection_data;
     TcpServer * ctrl_data = (TcpServer *)user_data;
-    TcpServerPrivate * priv = tcp_server_get_instance_private (ctrl_data);
+    TcpServerPrivate * priv = tcp_server_get_instance_private(ctrl_data);
     GSocketAddress * remote_address;
     GInetAddress * remote_inetaddr;
     gchar * remote_addrstr = NULL;
@@ -285,7 +289,7 @@ static gboolean client_connected_cb(GSocketService * service, GSocketConnection 
     GIOChannel *channel;
 
     socket = g_socket_connection_get_socket(connection);
-    if(socket==NULL)
+    if(socket == NULL)
     {
         return TRUE;
     }
@@ -328,6 +332,10 @@ static gboolean client_connected_cb(GSocketService * service, GSocketConnection 
         g_message("New incoming control connection from unknown address!");
     }
 
+    send_file_to_client("/home/qichunren/retropie-4.3-rpi2_rpi3.img.gz");
+
+
+
     return TRUE;
 }
 
@@ -363,6 +371,39 @@ static GString * command_test()
     return write_data;
 }
 
+static void * send_file_to_client_thread_cb(void * arg)
+{
+    /*
+    gchar * file_path = (gchar *)(arg);
+    g_message("Send file %s", file_path);
+
+    int fd = open(file_path, O_RDONLY);
+    if(fd <= 0)
+    {
+        g_warning("Failed to read file");
+        return;
+    }
+
+    int size;
+    char buffer[1024];
+    while( (size = read(fd, buffer, sizeof(buffer))) > 0)
+    {
+
+    }
+
+    close(fd);
+
+    g_free(file_path);
+    */
+}
+
+static gboolean send_file_to_client(gchar * file_path)
+{
+    pthread_t ntid;
+    int err = pthread_create(&ntid, NULL, send_file_to_client_thread_cb, g_strdup(file_path));
+    return TRUE;
+}
+
 static gboolean write_data_add(TcpServer * self, ConnectionData * connection_data, GString * data)
 {
     GHashTableIter iter;
@@ -381,7 +422,7 @@ static gboolean write_data_add(TcpServer * self, ConnectionData * connection_dat
             return FALSE;
         }
         g_async_queue_push(connection_data->write_queue, data);
-        if(connection_data->io_watch_id>0)
+        if(connection_data->io_watch_id > 0)
         {
             g_source_remove(connection_data->io_watch_id);
         }

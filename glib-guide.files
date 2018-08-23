@@ -1,5 +1,8 @@
 build/config.h
 
+autogen.sh
+configure.ac
+
 gobject-examples/main.c
 gobject-examples/some_object.c
 gobject-examples/some_object.h
@@ -14,6 +17,7 @@ src/demo1.c
 src/demo2.c
 
 tcp-examples/main.c
+tcp-examples/main2.c
 tcp-examples/tcp-server.c
 tcp-examples/tcp-server.h
 
