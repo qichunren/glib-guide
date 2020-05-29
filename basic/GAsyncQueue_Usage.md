@@ -13,13 +13,10 @@ GAsyncQueue 异步队列可以用于线程之间的同步，在多个线程中�
     gint *usr_data;
     while (1)
     {
-        // g_async_queue_lock(async_queue);
-        // usr_data = (gint *)g_async_queue_pop_unlocked(async_queue);
         usr_data = (gint *)g_async_queue_pop(async_queue);
         g_printf("%s pop: %d\n", __func__, *usr_data);
         g_free(usr_data);
         g_printf("queue length %d\n", g_async_queue_length_unlocked(async_queue));
-        // g_async_queue_unlock(async_queue);
         g_usleep(2000000);
     }
     }
@@ -30,13 +27,10 @@ GAsyncQueue 异步队列可以用于线程之间的同步，在多个线程中�
     gint count = 0;
     while (1)
     {
-        // g_async_queue_lock (async_queue);
         tmp = (gint *)g_new0(gint, 1);
         *tmp = count++;
-        // g_async_queue_push_unlocked(async_queue, tmp);
         g_async_queue_push(async_queue, tmp);
         g_printf("%s count: %d\n", __func__, *tmp);
-        // g_async_queue_unlock (async_queue);
         g_usleep(1000000);
     }
     }
