@@ -2,7 +2,7 @@
 
 ## 目录
 
-* [GAsyncQueue 使用](/basic/GAsyncQueue_Usage)
+* [GAsyncQueue 使用](basic/GAsyncQueue_Usage)
 
 ## Install dependency
 
