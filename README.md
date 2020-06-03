@@ -2,6 +2,7 @@
 
 ## 目录
 
+* [GString 使用](basic/GString_Usage)
 * [GAsyncQueue 使用](basic/GAsyncQueue_Usage)
 
 ## Install dependency
